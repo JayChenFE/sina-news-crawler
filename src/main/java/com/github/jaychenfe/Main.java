@@ -12,9 +12,11 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.function.Consumer;
 
 public class Main {
@@ -28,19 +30,9 @@ public class Main {
         Connection connection =
                 DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD);
 
-        while (true) {
-            // 待处理的链接池
-            List<String> linkPool = loadUrlsFromDatabase(connection, "select LINK from LINKS_TO_BE_PROCESSED");
+        String link;
 
-            if (linkPool.isEmpty()) {
-                break;
-            }
-            String link = linkPool.remove(linkPool.size() - 1);
-
-            link = fixLink(link);
-
-            insertLinkIntoDatabase(connection, link, "delete from LINKS_TO_BE_PROCESSED where link = ?");
-
+        while ((link = getNextLinkThenDeleteLink(connection)) != null) {
             System.out.println(link);
 
             if (!isToProcessLink(connection, link)) {
@@ -48,13 +40,13 @@ public class Main {
             }
 
             Document doc = httpGetAndParseHtml(link);
-            parseUrlsFromPageAndStoreIntoDatabase(linkPool, doc, connection);
+            parseUrlsFromPageAndStoreIntoDatabase(doc, connection);
             storeToDatabaseIfItIsNewsPage(doc);
-            insertLinkIntoDatabase(connection, link, "insert into LINKS_ALREADY_PROCESSED (LINK) values (?)");
+            updateDatabase(connection, link, "insert into LINKS_ALREADY_PROCESSED (LINK) values (?)");
         }
     }
 
-    private static void insertLinkIntoDatabase(Connection connection, String link, String sql) throws SQLException {
+    private static void updateDatabase(Connection connection, String link, String sql) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, link);
             statement.executeUpdate();
@@ -76,19 +68,18 @@ public class Main {
         return link;
     }
 
-    private static void parseUrlsFromPageAndStoreIntoDatabase(List<String> linkPool, Document doc, Connection connection) {
+    private static void parseUrlsFromPageAndStoreIntoDatabase(Document doc, Connection connection) {
         doc.select("a").stream()
                 .map(aTag -> aTag.attr("href"))
                 .map(Main::fixLink)
                 .filter(Main::isInterestedLink)
-                .forEach(insertLinkComsumer(linkPool, connection));
+                .forEach(insertLinkConsumer(connection));
     }
 
-    private static Consumer<String> insertLinkComsumer(List<String> linkPool, Connection connection) {
+    private static Consumer<String> insertLinkConsumer(Connection connection) {
         return link -> {
-            linkPool.add(link);
             try {
-                insertLinkIntoDatabase(connection, link, "insert into LINKS_TO_BE_PROCESSED (LINK) values (?)");
+                updateDatabase(connection, link, "insert into LINKS_TO_BE_PROCESSED (LINK) values (?)");
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
@@ -107,17 +98,24 @@ public class Main {
         return false;
     }
 
-    private static List<String> loadUrlsFromDatabase(Connection connection, String sql) throws SQLException {
-        List<String> result = new ArrayList<>();
+    private static String getNextLinkThenDeleteLink(Connection connection) throws SQLException {
+        String link = getNextLink(connection);
 
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        if (link != null) {
+            updateDatabase(connection, link, "delete from LINKS_TO_BE_PROCESSED where link = ?");
+        }
+        return link;
+    }
+
+    private static String getNextLink(Connection connection) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("select LINK from LINKS_TO_BE_PROCESSED limit 1")) {
             try (ResultSet resultSet = statement.executeQuery()) {
-                while (resultSet.next()) {
-                    result.add(resultSet.getString(1));
+                if (resultSet.next()) {
+                    return resultSet.getString(1);
                 }
             }
         }
-        return result;
+        return null;
     }
 
     private static void storeToDatabaseIfItIsNewsPage(Document doc) {
