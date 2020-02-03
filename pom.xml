@@ -91,6 +91,23 @@
                 </dependencies>
             </plugin>
             <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>6.2.1</version>
+                <configuration>
+                    <url>jdbc:h2:file:D:\git_home\jrg\java_zb\sina-news-crawler\news</url>
+                    <user>root</user>
+                    <password>root</password>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.h2database</groupId>
+                        <artifactId>h2</artifactId>
+                        <version>1.4.199</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
                 <version>3.1.12.2</version>
