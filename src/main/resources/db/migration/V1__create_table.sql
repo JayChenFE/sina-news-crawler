@@ -16,7 +16,7 @@ create table news
 (
 	id bigint auto_increment,
 	title text not null,
-	content text not null,
+	content mediumtext not null,
 	url varchar(2000) not null,
 	created_at timestamp,
 	modified_at timestamp,
