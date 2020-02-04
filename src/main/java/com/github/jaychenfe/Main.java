@@ -9,6 +9,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class Main {
     static final String DB_URL = "jdbc:h2:file:D:\\git_home\\jrg\\java_zb\\sina-news-crawler\\news";
@@ -41,7 +43,7 @@ public class Main {
 
             Document doc = httpGetAndParseHtml(link);
             parseUrlsFromPageAndStoreIntoDatabase(doc, connection);
-            storeToDatabaseIfItIsNewsPage(doc);
+            storeToDatabaseIfItIsNewsPage(connection, link, doc);
             updateDatabase(connection, link, "insert into LINKS_ALREADY_PROCESSED (LINK) values (?)");
         }
     }
@@ -73,10 +75,10 @@ public class Main {
                 .map(aTag -> aTag.attr("href"))
                 .map(Main::fixLink)
                 .filter(Main::isInterestedLink)
-                .forEach(insertLinkConsumer(connection));
+                .forEach(generateInsertLinkConsumer(connection));
     }
 
-    private static Consumer<String> insertLinkConsumer(Connection connection) {
+    private static Consumer<String> generateInsertLinkConsumer(Connection connection) {
         return link -> {
             try {
                 updateDatabase(connection, link, "insert into LINKS_TO_BE_PROCESSED (LINK) values (?)");
@@ -100,7 +102,6 @@ public class Main {
 
     private static String getNextLinkThenDeleteLink(Connection connection) throws SQLException {
         String link = getNextLink(connection);
-
         if (link != null) {
             updateDatabase(connection, link, "delete from LINKS_TO_BE_PROCESSED where link = ?");
         }
@@ -118,12 +119,34 @@ public class Main {
         return null;
     }
 
-    private static void storeToDatabaseIfItIsNewsPage(Document doc) {
+    private static void storeToDatabaseIfItIsNewsPage(Connection connection, String link, Document doc) throws SQLException {
         Elements articleTags = doc.select("article");
-        if (!articleTags.isEmpty()) {
-            String title = articleTags.get(0).child(0).text();
-            System.out.println(title);
+        if (articleTags.isEmpty()) {
+            return;
         }
+        Element articleTag = articleTags.get(0);
+        String title = articleTag.child(0).text();
+        System.out.println(title + "\n");
+        String content = getContent(articleTag);
+        System.out.println(content);
+        saveNews(connection, link, title, content);
+    }
+
+    private static void saveNews(Connection connection, String link, String title, String content) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("insert into NEWS (title, content, url, created_at, modified_at) values (?,?,?,now(),now())")) {
+            statement.setString(1, title);
+            statement.setString(2, content);
+            statement.setString(3, link);
+            statement.executeUpdate();
+        }
+    }
+
+    private static String getContent(Element articleTag) {
+        return articleTag.select("p")
+                .stream()
+                .filter(node -> node.children().isEmpty())
+                .map(Element::text)
+                .collect(Collectors.joining("\n"));
     }
 
     private static Document httpGetAndParseHtml(String link) throws IOException {
