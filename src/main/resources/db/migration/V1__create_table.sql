@@ -1,37 +1,20 @@
-create table LINKS_TO_BE_PROCESSED
+create table links_to_be_process
 (
 	link varchar(2000) not null
-);
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci comment='待处理链接';
 
-comment on table LINKS_TO_BE_PROCESSED is '待处理链接';
-
-create table LINKS_ALREADY_PROCESSED
+create table links_already_processed
 (
 	link varchar(2000) not null
-);
-
-comment on table LINKS_ALREADY_PROCESSED is '已处理的链接';
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci  comment='已处理的链接';
 
 create table news
 (
-	id bigint auto_increment,
-	title text not null,
-	content mediumtext not null,
-	url varchar(2000) not null,
-	created_at timestamp,
-	modified_at timestamp,
-	constraint news_pk
-		primary key (id)
-);
+	id bigint  primary key auto_increment,
+	title text not null comment '标题' ,
+	content mediumtext not null comment '内容',
+	url varchar(2000) not null comment 'url',
+	created_at timestamp default now(),
+	modified_at timestamp default now()
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci  comment='新闻';
 
-comment on table news is '新闻';
-
-comment on column news.title is '标题';
-
-comment on column news.content is '内容';
-
-comment on column news.url is 'url';
-
-comment on column news.created_at is '创建时间';
-
-comment on column news.modified_at is '修改时间';
