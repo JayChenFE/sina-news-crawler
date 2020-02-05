@@ -34,7 +34,6 @@ public class JdbcCrawlerDao implements CrawlerDao {
         return link;
     }
 
-    @Override
     public void saveNews(String link, String title, String content) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("insert into NEWS (title, content, url, created_at, modified_at) values (?,?,?,now(),now())")) {
             statement.setString(1, title);

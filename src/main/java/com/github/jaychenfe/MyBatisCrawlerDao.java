@@ -10,10 +10,10 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MyBatisCrawlwerDao implements CrawlerDao {
+public class MyBatisCrawlerDao implements CrawlerDao {
     private SqlSessionFactory sqlSessionFactory;
 
-    public MyBatisCrawlwerDao() {
+    public MyBatisCrawlerDao() {
         String resource = "db/mybatis/config.xml";
         InputStream inputStream;
         try {
