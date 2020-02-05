@@ -1,1 +1,1 @@
-insert into  LINKS_TO_BE_PROCESSED (LINK) values ('https://sina.cn');
+insert into  links_to_be_process (LINK) values ('https://sina.cn');
