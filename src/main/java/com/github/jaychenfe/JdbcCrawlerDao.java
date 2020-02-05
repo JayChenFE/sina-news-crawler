@@ -25,6 +25,7 @@ public class JdbcCrawlerDao implements CrawlerDao {
         }
     }
 
+    @Override
     public String getNextLinkThenDeleteLink() throws SQLException {
         String link = getNextLink();
         if (link != null) {
@@ -33,13 +34,7 @@ public class JdbcCrawlerDao implements CrawlerDao {
         return link;
     }
 
-    public void updateDatabase(String link, String sql) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, link);
-            statement.executeUpdate();
-        }
-    }
-
+    @Override
     public void saveNews(String link, String title, String content) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("insert into NEWS (title, content, url, created_at, modified_at) values (?,?,?,now(),now())")) {
             statement.setString(1, title);
@@ -49,6 +44,7 @@ public class JdbcCrawlerDao implements CrawlerDao {
         }
     }
 
+    @Override
     public boolean isLinkProcessed(String link) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("select  LINK from LINKS_ALREADY_PROCESSED where link= ?")) {
             statement.setString(1, link);
@@ -59,6 +55,24 @@ public class JdbcCrawlerDao implements CrawlerDao {
             }
         }
         return false;
+    }
+
+    @Override
+    public void insertProcessedLink(String link) throws SQLException {
+        updateDatabase(link, "insert into LINKS_ALREADY_PROCESSED (LINK) values (?)");
+
+    }
+
+    @Override
+    public void insertLinkToBeProcess(String link) throws SQLException {
+        updateDatabase(link, "insert into LINKS_TO_BE_PROCESSED (LINK) values (?)");
+    }
+
+    private void updateDatabase(String link, String sql) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, link);
+            statement.executeUpdate();
+        }
     }
 
     private String getNextLink() throws SQLException {

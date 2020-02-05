@@ -18,9 +18,9 @@ import java.util.stream.Collectors;
 
 public class Crawler {
 
-    CrawlerDao dao = new JdbcCrawlerDao();
+    CrawlerDao dao = new MyBatisCrawlwerDao();
 
-    public void main(String[] args) throws IOException, SQLException {
+    public static void main(String[] args) throws IOException, SQLException {
         new Crawler().run();
     }
 
@@ -38,7 +38,7 @@ public class Crawler {
             Document doc = httpGetAndParseHtml(link);
             parseUrlsFromPageAndStoreIntoDatabase(doc);
             storeToDatabaseIfItIsNewsPage(link, doc);
-            dao.updateDatabase(link, "insert into LINKS_ALREADY_PROCESSED (LINK) values (?)");
+            dao.insertProcessedLink(link);
         }
     }
 
@@ -68,7 +68,7 @@ public class Crawler {
     private Consumer<String> generateInsertLinkConsumer() {
         return link -> {
             try {
-                dao.updateDatabase(link, "insert into LINKS_TO_BE_PROCESSED (LINK) values (?)");
+                dao.insertLinkToBeProcess(link);
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
