@@ -16,29 +16,31 @@ import java.sql.SQLException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public class Crawler {
+public class Crawler extends Thread {
 
-    CrawlerDao dao = new MyBatisCrawlerDao();
+    final CrawlerDao dao;
 
-    public static void main(String[] args) throws IOException, SQLException {
-        new Crawler().run();
+    public Crawler(CrawlerDao dao) {
+        this.dao = dao;
     }
 
-    public void run() throws SQLException, IOException {
+    public void run() {
+        try {
+            String link;
+            while ((link = dao.getNextLinkThenDeleteLink()) != null) {
+                System.out.println(link);
 
-        String link;
+                if (!isToProcessLink(link)) {
+                    continue;
+                }
 
-        while ((link = dao.getNextLinkThenDeleteLink()) != null) {
-            System.out.println(link);
-
-            if (!isToProcessLink(link)) {
-                continue;
+                Document doc = httpGetAndParseHtml(link);
+                parseUrlsFromPageAndStoreIntoDatabase(doc);
+                storeToDatabaseIfItIsNewsPage(link, doc);
+                dao.insertProcessedLink(link);
             }
-
-            Document doc = httpGetAndParseHtml(link);
-            parseUrlsFromPageAndStoreIntoDatabase(doc);
-            storeToDatabaseIfItIsNewsPage(link, doc);
-            dao.insertProcessedLink(link);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
